@@ -96,7 +96,10 @@ function test()
 
 	# inference
 	max_iter = 200
-	S_est, bgmm = GaussianMixtureModel.learn_GS(X, bgmm, max_iter)
+	# Gibbs Sampling
+	#S_est, bgmm = GaussianMixtureModel.learn_GS(X, bgmm, max_iter)
+	# Collapsed Gibbs Sampling
+	S_est, bgmm = GaussianMixtureModel.learn_CGS(X, bgmm, max_iter)
 	toc()
 	#plot_2D(X, S)
 	visualize_2D(X, S, S_est, "2D plot")
