@@ -88,9 +88,9 @@ function test()
 	bgmm = GaussianMixtureModel.BGMM(K, D, alpha, cmp)
 
 	N = 200
-	#gmm = GaussianMixtureModel.sample_GMM(bgmm)
+	gmm = GaussianMixtureModel.sample_GMM(bgmm)
 	#println(gmm.phi)
-	#X, S = GaussianMixtureModel.sample_data(gmm, N)
+	X, S = GaussianMixtureModel.sample_data(gmm, N)
 
 	print(size(X))
 

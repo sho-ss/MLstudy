@@ -155,7 +155,7 @@ function sample_S_CGS(bgmm::BGMM, X::Matrix{Float64}, S::Matrix{Float64})
 		bgmm = remove_stats(bgmm, X[:,[n]], S[:,[n]])
 		S[:, n] = sample_sn(bgmm, X[:,n])
 		# add stats w.r.t X[:, n]
-		bgmm = update_BGMM(bgmm, X[:,[n]], S[:,[n]])
+		bgmm = add_stats(bgmm, X[:,[n]], S[:,[n]])
 	end
 	return S, bgmm
 end
