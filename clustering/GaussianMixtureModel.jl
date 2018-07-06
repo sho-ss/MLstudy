@@ -5,7 +5,7 @@ using PDMats
 using StatsFuns.logsumexp
 
 export GW, Gauss, GMM, BGMM
-export learn_GS
+export learn_GS, learn_CGS
 
 ################
 ## types
@@ -105,8 +105,65 @@ function sample_S(gmm::GMM, X::Matrix{Float64})
 	return S
 end
 
+
+#############
+## used for CGS
+function calc_ln_pdf_ST(gw::GW, xn::Vector{Float64})
+	D = size(xn,1)
+	tmp = ((1.0 - D + gw.nu) / (1.0 + gw.beta)) * gw.beta * gw.W
+	ln_pdf = logpdf(MvTDist(1.0 - D + gw.nu, gw.m, PDMats.PDMat(Symmetric(inv(tmp)))), xn)
+	return ln_pdf
+end
+
+
+remove_stats(bgmm::BGMM, Xn::Matrix{Float64}, Sn::Matrix{Float64}) = add_stats(bgmm, Xn, -Sn)
+
+function add_stats(bgmm::BGMM, Xn::Matrix{Float64}, Sn::Matrix{Float64})
+	alpha = bgmm.alpha
+	K = bgmm.K
+	D = bgmm.D
+	cmp = Vector{GW}()
+
+	for k in 1 : K
+		beta = bgmm.cmp[k].beta + Sn[k]
+		m = (1.0/beta) * (bgmm.cmp[k].beta*bgmm.cmp[k].m + Sn[k]*vec(Xn))
+		nu = bgmm.cmp[k].nu + Sn[k]
+		W = inv(Sn[k]*Xn*Xn'
+					+ bgmm.cmp[k].beta*bgmm.cmp[k].m*bgmm.cmp[k].m'
+					- beta*m*m'
+					+ inv(bgmm.cmp[k].W))
+		push!(cmp, GW(beta, m, nu, W))
+	end
+	alpha_tmp = alpha .+ vec(Sn)
+	return BGMM(K, D, alpha_tmp, cmp)
+end
+
+function sample_sn(bgmm::BGMM, xn::Vector{Float64})
+	tmp_ln_p = [(calc_ln_pdf_ST(bgmm.cmp[k], xn) + log(bgmm.alpha[k]))
+			for k in 1 : bgmm.K]
+	tmp_ln_p = tmp_ln_p - logsumexp(tmp_ln_p)
+	sn = categorical_sample(exp.(tmp_ln_p))
+	return sn
+end
+
+function sample_S_CGS(bgmm::BGMM, X::Matrix{Float64}, S::Matrix{Float64})
+	K = bgmm.K
+	D = bgmm.D
+	N = size(X, 2)
+	for n in 1 : N
+		# remove stats w.r.t X[:,n]
+		bgmm = remove_stats(bgmm, X[:,[n]], S[:,[n]])
+		S[:, n] = sample_sn(bgmm, X[:,n])
+		# add stats w.r.t X[:, n]
+		bgmm = update_BGMM(bgmm, X[:,[n]], S[:,[n]])
+	end
+	return S, bgmm
+end
+
+
+
 #################
-## main algorichm
+## main algorithm
 function learn_GS(X::Matrix{Float64}, prior_bgmm::BGMM, max_iter::Int)
 	# initialization
 	S = init_S(prior_bgmm, X)
@@ -118,6 +175,19 @@ function learn_GS(X::Matrix{Float64}, prior_bgmm::BGMM, max_iter::Int)
 		bgmm = update_BGMM(prior_bgmm, X, S)
 	end
 
+	return S, bgmm
+end
+
+
+function learn_CGS(X::Matrix{Float64}, prior_bgmm::BGMM, max_iter::Int)
+	# initialization
+	S = init_S(prior_bgmm, X)
+	bgmm = update_BGMM(prior_bgmm, X, S)
+
+	for i in 1 : max_iter
+		S, bgmm = sample_S_CGS(bgmm, X, S)
+		#bgmm = update_BGMM(prior_bgmm, X, S)
+	end
 	return S, bgmm
 end
 
