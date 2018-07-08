@@ -27,15 +27,15 @@ function visualize_2D(X::Matrix{Float64}, S::Matrix{Float64}, S_est::Matrix{Floa
 
     ax2[:set_title]("estimation")
 
-    savefig("test.png")
+    savefig("test_dp.png")
 end
 
 #############
-## main
+## functions for creating data of test
 
-function create_data(K)
+function create_data()
 	# 多次元ガウス分布からのサンプリング
-	S = zeros(K, 200)
+	S = zeros(3, 200)
 
 	mu1 = Float64[2, 5]
 	mu2 = Float64[-3, 2]
@@ -59,10 +59,37 @@ function create_data(K)
 	return X, S
 end
 
+function create_data2()
+	# ガウス分布からのサンプリング
+	# 偏りのあるデータを生成
+	N = 200
+	S = zeros(2, N)
+
+	mu1 = Float64[0, 5]
+	mu2 = Float64[2, -5]
+	sig1 = Float64[1.0 0.3; 0.3 1.0]
+	sig2 = Float64[1.5 1.2; 1.2 1.5]
+	x1 = rand(MvNormal(mu1, sig1), 100)
+	x2 = rand(MvNormal(mu2, sig2), 100)
+	X = hcat(x1, x2)
+
+	for n in 1 : N
+		if n <= 100
+			S[1, n] = 1
+		else
+			S[2, n] = 1
+		end
+	end
+	return X, S
+end
+
+##############
+## main
 function test()
 	# create test data
 	K = 3
-	X, S = create_data(K)
+	#X, S = create_data()
+	X, S = create_data2()
 	D = size(X, 1)
 
 	# set hyperparam
@@ -77,7 +104,7 @@ function test()
 	cmp = [DirichletProcess.GW(beta, m, nu, W) for _ in 1:K+1]
 	dp = DirichletProcess.DP(K, D, alpha, cmp)
 
-	println(size(X))
+	println("X: ", size(X))
 
 	# inference
 	max_iter = 200
@@ -91,5 +118,4 @@ function test()
 end
 
 test()
-
 
