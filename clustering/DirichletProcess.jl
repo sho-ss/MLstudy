@@ -73,9 +73,10 @@ function remove_stats(dp::DP, X::Matrix{Float64}, S::Matrix{Float64}, n::Int)
 	idx = find(S[:,n] .== 1)[1]
 	# remove stats
 	sum_S = vec(sum(S, 2))
+	sum_S[idx] -= 1
 
 	# num of data belong to the class is 0 or not
-	if sum_S[idx] == 0
+	if sum_S[idx] == 0.0
 		S, dp = update_DP(dp, S, idx)
 	else
 		#############
@@ -95,7 +96,6 @@ function remove_stats(dp::DP, X::Matrix{Float64}, S::Matrix{Float64}, n::Int)
 		push!(cmp, GW(dp.cmp[K+1].beta, dp.cmp[K+1].m, dp.cmp[K+1].nu, dp.cmp[K+1].W))
 		dp = DP(K, dp.D, dp.alpha, cmp)
 	end
-
 	return S, dp
 end
 
@@ -119,6 +119,10 @@ end
 function add_newClass(dp::DP, sn::Vector{Float64}, S::Matrix{Float64}, n::Int)
 	N = size(S, 2)
 	K = dp.K
+
+	# reset Sn
+	sn_tmp = zeros(K)
+	S[:, n] = sn_tmp
 
 	tmp = zeros(N)
 	tmp[n] = 1
@@ -145,7 +149,13 @@ function update_S(dp::DP, sn::Vector{Float64}, S::Matrix{Float64}, n::Int)
 	k = find(sn .== 1)[1]
 	if k == (dp.K + 1)
 		# add new class
+		#println("S: ", size(S))
+		sum_S = sum(S, 2)
+		#println("sum_S: ", sum_S)
 		S, dp = add_newClass(dp, sn, S, n)
+		#println("S after: ", size(S))
+		sum_S = sum(S, 2)
+		#println("sum_S after: ", sum_S)
 	else
 		s_tmp = zeros(dp.K)
 		s_tmp[k] = 1.0
